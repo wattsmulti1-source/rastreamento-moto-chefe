@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Token de Rastreamento Moto Chefe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+body { margin:0; font-family: Arial, sans-serif; background:#000; color:#fff; }
+header { padding:15px; text-align:center; font-size:24px; font-weight:bold; }
+#login, #admin, #tracking { display:none; padding:15px; }
+input, button, select { width:100%; padding:8px; margin:5px 0; }
+button { background:#fff; color:#000; border:none; cursor:pointer; }
+#map { height:400px; margin-top:10px; }
+.card { background:#111; padding:15px; border-radius:8px; margin-bottom:10px; }
+</style>
+</head>
+<body>
+<header>Token de Rastreamento Moto Chefe</header>
+
+<div id="login" class="card">
+<h3>Login Admin</h3>
+<input id="user" placeholder="Usuário" />
+<input id="pass" type="password" placeholder="Senha" />
+<button onclick="login()">Entrar</button>
+</div>
+
+<div id="admin">
+<h3>Painel Admin</h3>
+<div class="card">
+<input id="cliente" placeholder="Nome do Cliente" />
+<input id="token" placeholder="Token" />
+<input id="lat" placeholder="Latitude" />
+<input id="lng" placeholder="Longitude" />
+<select id="status">
+<option>Em transporte</option>
+<option>Entregue</option>
+</select>
+<button onclick="salvar()">Salvar</button>
+</div>
+<div id="lista"></div>
+<button onclick="logout()">Sair</button>
+</div>
+
+<div id="tracking">
+<h3>Rastreamento</h3>
+<input id="buscar" placeholder="Digite seu token" />
+<button onclick="rastrear()">Rastrear</button>
+<div id="map"></div>
+<p id="info"></p>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const ADMIN_USER='ADMIN';
+const ADMIN_PASS='ADMIN132';
+let dados = JSON.parse(localStorage.getItem('dados')||'[]');
+let map, marker, routeLine, animInterval;
+
+document.getElementById('login').style.display='block';
+document.getElementById('tracking').style.display='block';
+
+function login(){
+ if(user.value===ADMIN_USER && pass.value===ADMIN_PASS){
+  login.style.display='none'; admin.style.display='block'; listar();
+ } else alert('Login inválido');
+}
+function logout(){ admin.style.display='none'; login.style.display='block'; }
+
+function salvar(){
+ dados.push({cliente:cliente.value,token:token.value,lat:lat.value,lng:lng.value,status:status.value});
+ localStorage.setItem('dados',JSON.stringify(dados)); listar();
+}
+
+function listar(){
+ lista.innerHTML='';
+ dados.forEach((d,i)=>{
+  let div=document.createElement('div'); div.className='card';
+  div.innerHTML=`${d.cliente} - ${d.status} <button onclick=\"remover(${i})\">Excluir</button>`;
+  lista.appendChild(div);
+ });
+}
+function remover(i){ dados.splice(i,1); localStorage.setItem('dados',JSON.stringify(dados)); listar(); }
+
+function rastrear(){
+ clearInterval(animInterval);
+ let t=buscar.value;
+ let d=dados.find(x=>x.token===t);
+ if(!d){ alert('Token não encontrado'); return; }
+ info.innerText=`Cliente: ${d.cliente} | Status: ${d.status}`;
+ if(!map){
+  map=L.map('map').setView([d.lat,d.lng],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+ }
+ // rota simulada
+ let start=[d.lat-0.01,d.lng-0.01];
+ let end=[parseFloat(d.lat),parseFloat(d.lng)];
+ let route=[start, end];
+ if(routeLine) routeLine.remove();
+ routeLine=L.polyline(route).addTo(map);
+ let i=0;
+ if(marker) marker.remove();
+ marker=L.marker(start).addTo(map);
+ animInterval=setInterval(()=>{
+  i+=0.001;
+  if(i>=1){ clearInterval(animInterval); }
+  let lat=start[0]+(end[0]-start[0])*i;
+  let lng=start[1]+(end[1]-start[1])*i;
+  marker.setLatLng([lat,lng]);
+ },50);
+ map.fitBounds(routeLine.getBounds());
+ return;
+  map=L.map('map').setView([d.lat,d.lng],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+ }
+ if(marker) marker.remove();
+ marker=L.marker([d.lat,d.lng]).addTo(map);
+ map.setView([d.lat,d.lng],13);
+}
+</script>
+</body>
+</html>
